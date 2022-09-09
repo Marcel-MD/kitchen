@@ -1,0 +1,28 @@
+{
+  "cooks": [
+    {
+      "rank": 3,
+      "proficiency": 4,
+      "name": "Gordon Ramsay",
+      "catch-phrase": "Hey, panini head, are you listening to me?"
+    },
+    {
+      "rank": 2,
+      "proficiency": 3,
+      "name": "Viorel Bostan",
+      "catch-phrase": "If you'll reach it."
+    },
+    {
+      "rank": 2,
+      "proficiency": 2,
+      "name": "Ken Thompson",
+      "catch-phrase": "When in doubt, use brute force."
+    },
+    {
+      "rank": 1,
+      "proficiency": 2,
+      "name": "Rob Pike",
+      "catch-phrase": "Share memory by communicating."
+    }
+  ]
+}
