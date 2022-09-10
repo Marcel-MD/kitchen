@@ -3,8 +3,9 @@ package domain
 type Distribution struct {
 	Order
 
-	CookingTime    int             `json:"cooking_time"`
+	CookingTime    int64           `json:"cooking_time"`
 	CookingDetails []CookingDetail `json:"cooking_details"`
+	ReceivedItems  []bool          `json:"-"`
 }
 
 type CookingDetail struct {
