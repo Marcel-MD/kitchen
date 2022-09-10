@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/Marcel-MD/kitchen/domain"
 	"github.com/gin-gonic/gin"
@@ -11,7 +12,13 @@ import (
 )
 
 func main() {
-	config()
+	timeUnit, nrOfTables := config()
+
+	domain.SetTimeUnit(timeUnit)
+	orderChan := make(chan domain.Order, nrOfTables)
+	menu := domain.GetMenu()
+	orderList := domain.NewOrderList(orderChan, menu)
+	orderList.Run()
 
 	r := gin.Default()
 	r.POST("/order", func(c *gin.Context) {
@@ -23,12 +30,14 @@ func main() {
 			return
 		}
 
+		orderChan <- order
+
 		c.JSON(200, gin.H{"message": "Order received"})
 	})
 	r.Run(":8081")
 }
 
-func config() {
+func config() (timeUnit, nrOfTables int) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	log.Logger = log.With().Caller().Logger()
 
@@ -36,4 +45,16 @@ func config() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error loading .env file")
 	}
+
+	timeUnit, err = strconv.Atoi(os.Getenv("TIME_UNIT"))
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error reading TIME_UNIT")
+	}
+
+	nrOfTables, err = strconv.Atoi(os.Getenv("TABLES"))
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error reading TABLES")
+	}
+
+	return
 }
