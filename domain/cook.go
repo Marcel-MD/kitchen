@@ -59,10 +59,10 @@ func (c *Cook) CookFood(foodOrder FoodOrder) {
 		return
 	}
 
-	preparationTime := time.Duration(food.PreparationTime * timeUnit * int(time.Millisecond))
+	preparationTime := time.Duration(food.PreparationTime * cfg.TimeUnit * int(time.Millisecond))
 	time.Sleep(preparationTime)
 
+	log.Info().Int("cook_id", c.Id).Int("food_id", foodOrder.FoodId).Int("order_id", foodOrder.OrderId).Msgf("%s finished cooking %s", c.Name, food.Name)
 	c.SendCookedFood <- foodOrder
 	atomic.AddInt64(&c.Occupation, -1)
-	log.Info().Int("cook_id", c.Id).Int("food_id", foodOrder.FoodId).Int("order_id", foodOrder.OrderId).Msgf("%s finished cooking %s", c.Name, food.Name)
 }
