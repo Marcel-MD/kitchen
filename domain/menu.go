@@ -26,6 +26,7 @@ func GetMenu() Menu {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error opening menu.json")
 	}
+	defer file.Close()
 
 	byteValue, _ := ioutil.ReadAll(file)
 	var menu Menu

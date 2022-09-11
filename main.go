@@ -1,21 +1,21 @@
 package main
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"os"
-	"strconv"
 
 	"github.com/Marcel-MD/kitchen/domain"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 func main() {
-	timeUnit, nrOfTables := config()
+	cfg := config()
 
-	domain.SetTimeUnit(timeUnit)
-	orderChan := make(chan domain.Order, nrOfTables)
+	domain.SetConfig(cfg)
+	orderChan := make(chan domain.Order, cfg.NrOfTables)
 	menu := domain.GetMenu()
 	orderList := domain.NewOrderList(orderChan, menu)
 	orderList.Run()
@@ -37,24 +37,19 @@ func main() {
 	r.Run(":8081")
 }
 
-func config() (timeUnit, nrOfTables int) {
+func config() domain.Config {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	log.Logger = log.With().Caller().Logger()
 
-	err := godotenv.Load(".env")
+	file, err := os.Open("config/cfg.json")
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error loading .env file")
+		log.Fatal().Err(err).Msg("Error opening menu.json")
 	}
+	defer file.Close()
 
-	timeUnit, err = strconv.Atoi(os.Getenv("TIME_UNIT"))
-	if err != nil {
-		log.Fatal().Err(err).Msg("Error reading TIME_UNIT")
-	}
+	byteValue, _ := ioutil.ReadAll(file)
+	var cfg domain.Config
+	json.Unmarshal(byteValue, &cfg)
 
-	nrOfTables, err = strconv.Atoi(os.Getenv("TABLES"))
-	if err != nil {
-		log.Fatal().Err(err).Msg("Error reading TABLES")
-	}
-
-	return
+	return cfg
 }

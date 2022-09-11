@@ -12,10 +12,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	diningHallPath = "http://localhost:8080/distribution"
-)
-
 type OrderList struct {
 	Distributions     map[int]*Distribution
 	ReceiveOrder      <-chan Order
@@ -120,7 +116,7 @@ func (ol *OrderList) ReceiveFoodOrderFromCooks() {
 
 		if len(distribution.CookingDetails) == len(distribution.Order.Items) {
 
-			distribution.CookingTime = (time.Now().UnixMilli() - distribution.CookingTime) / int64(timeUnit)
+			distribution.CookingTime = (time.Now().UnixMilli() - distribution.CookingTime) / int64(cfg.TimeUnit)
 
 			jsonBody, err := json.Marshal(distribution)
 			if err != nil {
@@ -128,7 +124,7 @@ func (ol *OrderList) ReceiveFoodOrderFromCooks() {
 			}
 			contentType := "application/json"
 
-			_, err = http.Post(diningHallPath, contentType, bytes.NewReader(jsonBody))
+			_, err = http.Post(cfg.DiningHallUrl+"/distribution", contentType, bytes.NewReader(jsonBody))
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error sending distribution to dining hall")
 			}

@@ -4,15 +4,16 @@
 
 Laboratory work on network programming.
 
-## Run Application
-
-```bash
-$ go run .
-```
-
 ## Run Application with Docker
 
 ```bash
-$ docker build -t kitchen .
-$ docker run -p 8081:8081 kitchen
+$ docker compose up --build
+```
+
+## Run Application
+
+Set `"dining_hall_url": "http://localhost:8080"` in `config/cfg.json`.
+
+```bash
+$ go run .
 ```

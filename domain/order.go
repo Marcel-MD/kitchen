@@ -1,11 +1,5 @@
 package domain
 
-var timeUnit = 1000
-
-func SetTimeUnit(unit int) {
-	timeUnit = unit
-}
-
 type Order struct {
 	OrderId    int     `json:"order_id"`
 	TableId    int     `json:"table_id"`
