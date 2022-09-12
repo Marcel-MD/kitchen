@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"sort"
 	"sync/atomic"
 	"time"
 
@@ -46,6 +47,10 @@ func NewOrderList(receiveOrder <-chan Order, menu Menu) *OrderList {
 		ol.Cooks[i] = NewCook(i, cookDetails, ol.ReceiveCookedFood, ol.Menu)
 		log.Info().Int("cook_id", i).Msgf("%s entered the kitchen", cookDetails.Name)
 	}
+
+	sort.Slice(ol.Cooks, func(i, j int) bool {
+		return ol.Cooks[i].Proficiency < ol.Cooks[j].Proficiency
+	})
 
 	return ol
 }
