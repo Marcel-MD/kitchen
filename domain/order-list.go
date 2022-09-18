@@ -2,6 +2,7 @@ package domain
 
 import (
 	"bytes"
+	"container/heap"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -14,11 +15,14 @@ import (
 )
 
 type OrderList struct {
-	Distributions     map[int]*Distribution
-	ReceiveOrder      <-chan Order
-	ReceiveCookedFood chan FoodOrder
-	Cooks             []*Cook
-	Menu              Menu
+	Distributions      map[int]*Distribution
+	ReceiveOrder       <-chan Order
+	OrderQueueChan     chan Order
+	ReceiveCookedFood  chan FoodOrder
+	Cooks              []*Cook
+	Menu               Menu
+	Queue              PriorityQueue
+	NrProcessingOrders int64
 }
 
 type CooksDetails struct {
@@ -27,10 +31,13 @@ type CooksDetails struct {
 
 func NewOrderList(receiveOrder <-chan Order, menu Menu) *OrderList {
 	ol := &OrderList{
-		Distributions:     make(map[int]*Distribution),
-		ReceiveOrder:      receiveOrder,
-		ReceiveCookedFood: make(chan FoodOrder),
-		Menu:              menu,
+		Distributions:      make(map[int]*Distribution),
+		ReceiveOrder:       receiveOrder,
+		OrderQueueChan:     make(chan Order),
+		ReceiveCookedFood:  make(chan FoodOrder),
+		Menu:               menu,
+		Queue:              make(PriorityQueue, 0, 10),
+		NrProcessingOrders: 0,
 	}
 
 	file, err := os.Open("config/cooks.json")
@@ -56,12 +63,29 @@ func NewOrderList(receiveOrder <-chan Order, menu Menu) *OrderList {
 }
 
 func (ol *OrderList) Run() {
+	go ol.ManageQueue()
 	go ol.SendFoodOrderToCooks()
 	go ol.ReceiveFoodOrderFromCooks()
 }
 
+func (ol *OrderList) ManageQueue() {
+	for {
+		select {
+		case order := <-ol.ReceiveOrder:
+			heap.Push(&ol.Queue, &Item{Order: order})
+
+		default:
+			if atomic.LoadInt64(&ol.NrProcessingOrders) == 0 && len(ol.Queue) > 0 {
+				item := heap.Pop(&ol.Queue).(*Item)
+				atomic.AddInt64(&ol.NrProcessingOrders, 1)
+				ol.OrderQueueChan <- item.Order
+			}
+		}
+	}
+}
+
 func (ol *OrderList) SendFoodOrderToCooks() {
-	for order := range ol.ReceiveOrder {
+	for order := range ol.OrderQueueChan {
 		ol.Distributions[order.OrderId] = &Distribution{
 			Order:          order,
 			CookingTime:    time.Now().UnixMilli(),
@@ -98,6 +122,8 @@ func (ol *OrderList) SendFoodOrderToCooks() {
 				}
 			}
 		}
+
+		atomic.AddInt64(&ol.NrProcessingOrders, -1)
 	}
 }
 
@@ -120,22 +146,25 @@ func (ol *OrderList) ReceiveFoodOrderFromCooks() {
 		distribution.CookingDetails = append(distribution.CookingDetails, foodOrder.CookingDetail)
 
 		if len(distribution.CookingDetails) == len(distribution.Order.Items) {
-
-			distribution.CookingTime = (time.Now().UnixMilli() - distribution.CookingTime) / int64(cfg.TimeUnit)
-
-			jsonBody, err := json.Marshal(distribution)
-			if err != nil {
-				log.Fatal().Err(err).Msg("Error marshalling distribution")
-			}
-			contentType := "application/json"
-
-			_, err = http.Post(cfg.DiningHallUrl+"/distribution", contentType, bytes.NewReader(jsonBody))
-			if err != nil {
-				log.Fatal().Err(err).Msg("Error sending distribution to dining hall")
-			}
-
-			log.Info().Int("order_id", foodOrder.OrderId).Msg("Distribution sent to dining hall")
-			delete(ol.Distributions, foodOrder.OrderId)
+			ol.SendDistributionToDiningHall(*distribution)
 		}
 	}
+}
+
+func (ol *OrderList) SendDistributionToDiningHall(distribution Distribution) {
+	distribution.CookingTime = (time.Now().UnixMilli() - distribution.CookingTime) / int64(cfg.TimeUnit)
+
+	jsonBody, err := json.Marshal(distribution)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error marshalling distribution")
+	}
+	contentType := "application/json"
+
+	_, err = http.Post(cfg.DiningHallUrl+"/distribution", contentType, bytes.NewReader(jsonBody))
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error sending distribution to dining hall")
+	}
+
+	log.Info().Int("order_id", distribution.OrderId).Msg("Distribution sent to dining hall")
+	delete(ol.Distributions, distribution.OrderId)
 }
