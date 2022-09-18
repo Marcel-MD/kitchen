@@ -52,7 +52,7 @@ func NewOrderList(receiveOrder <-chan Order, menu Menu) *OrderList {
 	ol.Cooks = make([]*Cook, len(cooksDetails.Cooks))
 	for i, cookDetails := range cooksDetails.Cooks {
 		ol.Cooks[i] = NewCook(i, cookDetails, ol.ReceiveCookedFood, ol.Menu)
-		log.Info().Int("cook_id", i).Msgf("%s entered the kitchen", cookDetails.Name)
+		log.Debug().Int("cook_id", i).Msgf("%s entered the kitchen", cookDetails.Name)
 	}
 
 	sort.Slice(ol.Cooks, func(i, j int) bool {
@@ -72,6 +72,7 @@ func (ol *OrderList) ManageQueue() {
 	for {
 		select {
 		case order := <-ol.ReceiveOrder:
+			log.Info().Int("order_id", order.OrderId).Msg("Kitchen received order")
 			heap.Push(&ol.Queue, &Item{Order: order})
 
 		default:
@@ -93,8 +94,6 @@ func (ol *OrderList) SendFoodOrderToCooks() {
 			ReceivedItems:  make([]bool, len(order.Items)),
 		}
 
-		log.Info().Int("order_id", order.OrderId).Msg("Kitchen received order")
-
 		for i, id := range order.Items {
 			food := ol.Menu.Foods[id-1]
 			IsFoodOrderSent := false
@@ -114,7 +113,7 @@ func (ol *OrderList) SendFoodOrderToCooks() {
 
 						atomic.AddInt64(&cook.Occupation, 1)
 						go cook.CookFood(foodOrder)
-						log.Info().Int("order_id", order.OrderId).Int("item_id", i).Int("food_id", food.Id).Int("cook_id", cook.Id).Msgf("%s order assigned to %s", food.Name, cook.Name)
+						log.Debug().Int("order_id", order.OrderId).Int("item_id", i).Int("food_id", food.Id).Int("cook_id", cook.Id).Msgf("%s order assigned to %s", food.Name, cook.Name)
 
 						IsFoodOrderSent = true
 						break
@@ -165,6 +164,6 @@ func (ol *OrderList) SendDistributionToDiningHall(distribution Distribution) {
 		log.Fatal().Err(err).Msg("Error sending distribution to dining hall")
 	}
 
-	log.Info().Int("order_id", distribution.OrderId).Msg("Distribution sent to dining hall")
+	log.Info().Int("order_id", distribution.OrderId).Int64("cooking_time", distribution.CookingTime).Msg("Distribution sent to dining hall")
 	delete(ol.Distributions, distribution.OrderId)
 }
