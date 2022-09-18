@@ -21,21 +21,23 @@ type OrderList struct {
 	ReceiveCookedFood  chan FoodOrder
 	Cooks              []*Cook
 	Menu               Menu
+	Apparatuses        map[string]*Apparatus
 	Queue              PriorityQueue
 	NrProcessingOrders int64
 }
 
-type CooksDetails struct {
+type cooksDetails struct {
 	Cooks []CookDetails
 }
 
-func NewOrderList(receiveOrder <-chan Order, menu Menu) *OrderList {
+func NewOrderList(receiveOrder <-chan Order) *OrderList {
 	ol := &OrderList{
 		Distributions:      make(map[int]*Distribution),
 		ReceiveOrder:       receiveOrder,
 		OrderQueueChan:     make(chan Order),
 		ReceiveCookedFood:  make(chan FoodOrder),
-		Menu:               menu,
+		Menu:               GetMenu(),
+		Apparatuses:        GetApparatusesMap(),
 		Queue:              make(PriorityQueue, 0, 10),
 		NrProcessingOrders: 0,
 	}
@@ -46,12 +48,12 @@ func NewOrderList(receiveOrder <-chan Order, menu Menu) *OrderList {
 	}
 
 	byteValue, _ := ioutil.ReadAll(file)
-	var cooksDetails CooksDetails
-	json.Unmarshal(byteValue, &cooksDetails)
+	var cds cooksDetails
+	json.Unmarshal(byteValue, &cds)
 
-	ol.Cooks = make([]*Cook, len(cooksDetails.Cooks))
-	for i, cookDetails := range cooksDetails.Cooks {
-		ol.Cooks[i] = NewCook(i, cookDetails, ol.ReceiveCookedFood, ol.Menu)
+	ol.Cooks = make([]*Cook, len(cds.Cooks))
+	for i, cookDetails := range cds.Cooks {
+		ol.Cooks[i] = NewCook(i, cookDetails, ol.ReceiveCookedFood, ol.Menu, ol.Apparatuses)
 		log.Debug().Int("cook_id", i).Msgf("%s entered the kitchen", cookDetails.Name)
 	}
 
@@ -63,12 +65,12 @@ func NewOrderList(receiveOrder <-chan Order, menu Menu) *OrderList {
 }
 
 func (ol *OrderList) Run() {
-	go ol.ManageQueue()
-	go ol.SendFoodOrderToCooks()
-	go ol.ReceiveFoodOrderFromCooks()
+	go ol.manageQueue()
+	go ol.sendFoodOrderToCooks()
+	go ol.receiveFoodOrderFromCooks()
 }
 
-func (ol *OrderList) ManageQueue() {
+func (ol *OrderList) manageQueue() {
 	for {
 		select {
 		case order := <-ol.ReceiveOrder:
@@ -85,7 +87,7 @@ func (ol *OrderList) ManageQueue() {
 	}
 }
 
-func (ol *OrderList) SendFoodOrderToCooks() {
+func (ol *OrderList) sendFoodOrderToCooks() {
 	for order := range ol.OrderQueueChan {
 		ol.Distributions[order.OrderId] = &Distribution{
 			Order:          order,
@@ -126,7 +128,7 @@ func (ol *OrderList) SendFoodOrderToCooks() {
 	}
 }
 
-func (ol *OrderList) ReceiveFoodOrderFromCooks() {
+func (ol *OrderList) receiveFoodOrderFromCooks() {
 	for foodOrder := range ol.ReceiveCookedFood {
 
 		distribution := ol.Distributions[foodOrder.OrderId]
@@ -145,12 +147,12 @@ func (ol *OrderList) ReceiveFoodOrderFromCooks() {
 		distribution.CookingDetails = append(distribution.CookingDetails, foodOrder.CookingDetail)
 
 		if len(distribution.CookingDetails) == len(distribution.Order.Items) {
-			ol.SendDistributionToDiningHall(*distribution)
+			ol.sendDistributionToDiningHall(*distribution)
 		}
 	}
 }
 
-func (ol *OrderList) SendDistributionToDiningHall(distribution Distribution) {
+func (ol *OrderList) sendDistributionToDiningHall(distribution Distribution) {
 	distribution.CookingTime = (time.Now().UnixMilli() - distribution.CookingTime) / int64(cfg.TimeUnit)
 
 	jsonBody, err := json.Marshal(distribution)

@@ -17,8 +17,7 @@ func main() {
 
 	domain.SetConfig(cfg)
 	orderChan := make(chan domain.Order, cfg.NrOfTables)
-	menu := domain.GetMenu()
-	orderList := domain.NewOrderList(orderChan, menu)
+	orderList := domain.NewOrderList(orderChan)
 	orderList.Run()
 
 	r := mux.NewRouter()
