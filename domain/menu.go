@@ -2,7 +2,7 @@ package domain
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -28,7 +28,7 @@ func GetMenu() Menu {
 	}
 	defer file.Close()
 
-	byteValue, _ := ioutil.ReadAll(file)
+	byteValue, _ := io.ReadAll(file)
 	var menu Menu
 	json.Unmarshal(byteValue, &menu)
 

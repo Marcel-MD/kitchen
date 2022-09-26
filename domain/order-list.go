@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"container/heap"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"sort"
@@ -47,7 +47,7 @@ func NewOrderList(receiveOrder <-chan Order) *OrderList {
 		log.Fatal().Err(err).Msg("Error opening cooks.json")
 	}
 
-	byteValue, _ := ioutil.ReadAll(file)
+	byteValue, _ := io.ReadAll(file)
 	var cds cooksDetails
 	json.Unmarshal(byteValue, &cds)
 

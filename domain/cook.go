@@ -64,10 +64,13 @@ func (c *Cook) CookFood(foodOrder FoodOrder) {
 	if food.CookingApparatus != "" {
 		apparatus := c.Apparatuses[food.CookingApparatus]
 		if apparatus != nil {
-			if apparatus.Use() {
-				go c.cookFoodWithApparatus(foodOrder, apparatus)
-				atomic.AddInt64(&c.Occupation, -1)
-				return
+			for {
+				if apparatus.Use() {
+					go c.cookFoodWithApparatus(foodOrder, apparatus)
+					atomic.AddInt64(&c.Occupation, -1)
+					return
+				}
+				time.Sleep(time.Duration(cfg.TimeUnit/2) * time.Millisecond)
 			}
 		}
 	}
