@@ -19,6 +19,7 @@ type OrderList struct {
 	ReceiveOrder       <-chan Order
 	OrderQueueChan     chan Order
 	ReceiveCookedFood  chan FoodOrder
+	FoodOrderChan      chan FoodOrder
 	Cooks              []*Cook
 	Menu               Menu
 	Apparatuses        map[string]*Apparatus
@@ -36,9 +37,10 @@ func NewOrderList(receiveOrder <-chan Order) *OrderList {
 		ReceiveOrder:       receiveOrder,
 		OrderQueueChan:     make(chan Order),
 		ReceiveCookedFood:  make(chan FoodOrder),
+		FoodOrderChan:      make(chan FoodOrder, cfg.MaxOrderItemsCount*cfg.NrOfConcurrentOrders),
 		Menu:               GetMenu(),
 		Apparatuses:        GetApparatusesMap(),
-		Queue:              make(PriorityQueue, 0, 10),
+		Queue:              make(PriorityQueue, 0, cfg.NrOfTables),
 		NrProcessingOrders: 0,
 	}
 
@@ -53,7 +55,7 @@ func NewOrderList(receiveOrder <-chan Order) *OrderList {
 
 	ol.Cooks = make([]*Cook, len(cds.Cooks))
 	for i, cookDetails := range cds.Cooks {
-		ol.Cooks[i] = NewCook(i, cookDetails, ol.ReceiveCookedFood, ol.Menu, ol.Apparatuses)
+		ol.Cooks[i] = NewCook(i, cookDetails, ol.ReceiveCookedFood, ol.FoodOrderChan, ol.Menu, ol.Apparatuses)
 		log.Debug().Int("cook_id", i).Msgf("%s entered the kitchen", cookDetails.Name)
 	}
 
@@ -66,7 +68,9 @@ func NewOrderList(receiveOrder <-chan Order) *OrderList {
 
 func (ol *OrderList) Run() {
 	go ol.manageQueue()
+	go ol.manageOrders()
 	go ol.sendFoodOrderToCooks()
+
 	go ol.receiveFoodOrderFromCooks()
 }
 
@@ -78,7 +82,7 @@ func (ol *OrderList) manageQueue() {
 			heap.Push(&ol.Queue, &Item{Order: order})
 
 		default:
-			if atomic.LoadInt64(&ol.NrProcessingOrders) == 0 && len(ol.Queue) > 0 {
+			if atomic.LoadInt64(&ol.NrProcessingOrders) < int64(cfg.NrOfConcurrentOrders) && len(ol.Queue) > 0 {
 				item := heap.Pop(&ol.Queue).(*Item)
 				atomic.AddInt64(&ol.NrProcessingOrders, 1)
 				ol.OrderQueueChan <- item.Order
@@ -87,8 +91,10 @@ func (ol *OrderList) manageQueue() {
 	}
 }
 
-func (ol *OrderList) sendFoodOrderToCooks() {
+func (ol *OrderList) manageOrders() {
 	for order := range ol.OrderQueueChan {
+		log.Info().Int("order_id", order.OrderId).Msg("Order list started processing order")
+
 		ol.Distributions[order.OrderId] = &Distribution{
 			Order:          order,
 			CookingTime:    time.Now().UnixMilli(),
@@ -96,35 +102,40 @@ func (ol *OrderList) sendFoodOrderToCooks() {
 			ReceivedItems:  make([]bool, len(order.Items)),
 		}
 
-		for i, id := range order.Items {
-			food := ol.Menu.Foods[id-1]
-			IsFoodOrderSent := false
+		for id, foodId := range order.Items {
+			food := ol.Menu.Foods[foodId-1]
 
-			for !IsFoodOrderSent {
-				for _, cook := range ol.Cooks {
-					if cook.CanCook(food) {
+			ol.FoodOrderChan <- FoodOrder{
+				OrderId: order.OrderId,
+				ItemId:  id,
+				Food:    food,
+				CookingDetail: CookingDetail{
+					FoodId: foodId,
+				},
+				RemainingPreparationTime: food.PreparationTime,
+			}
+		}
+	}
+}
 
-						foodOrder := FoodOrder{
-							OrderId: order.OrderId,
-							ItemId:  i,
-							CookingDetail: CookingDetail{
-								FoodId: food.Id,
-								CookId: cook.Id,
-							},
-						}
+func (ol *OrderList) sendFoodOrderToCooks() {
 
-						atomic.AddInt64(&cook.Occupation, 1)
-						go cook.CookFood(foodOrder)
-						log.Debug().Int("order_id", order.OrderId).Int("item_id", i).Int("food_id", food.Id).Int("cook_id", cook.Id).Msgf("%s order assigned to %s", food.Name, cook.Name)
+	for fo := range ol.FoodOrderChan {
+		IsFoodOrderSent := false
 
-						IsFoodOrderSent = true
-						break
-					}
+		for !IsFoodOrderSent {
+			for _, cook := range ol.Cooks {
+				if cook.CanCook(fo.Food) {
+
+					atomic.AddInt64(&cook.Occupation, 1)
+					go cook.CookFood(fo)
+					log.Debug().Int("order_id", fo.OrderId).Int("item_id", fo.ItemId).Int("food_id", fo.FoodId).Int("cook_id", cook.Id).Msgf("%s order assigned to %s", fo.Food.Name, cook.Name)
+
+					IsFoodOrderSent = true
+					break
 				}
 			}
 		}
-
-		atomic.AddInt64(&ol.NrProcessingOrders, -1)
 	}
 }
 
@@ -168,4 +179,5 @@ func (ol *OrderList) sendDistributionToDiningHall(distribution Distribution) {
 
 	log.Info().Int("order_id", distribution.OrderId).Int64("cooking_time", distribution.CookingTime).Msg("Distribution sent to dining hall")
 	delete(ol.Distributions, distribution.OrderId)
+	atomic.AddInt64(&ol.NrProcessingOrders, -1)
 }

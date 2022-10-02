@@ -9,8 +9,10 @@ import (
 
 type FoodOrder struct {
 	CookingDetail
-	ItemId  int
-	OrderId int
+	ItemId                   int
+	OrderId                  int
+	Food                     Food
+	RemainingPreparationTime int
 }
 
 type CookDetails struct {
@@ -25,16 +27,18 @@ type Cook struct {
 	Id             int
 	Occupation     int64
 	SendCookedFood chan<- FoodOrder
+	FoodOrderChan  chan<- FoodOrder
 	Menu           Menu
 	Apparatuses    map[string]*Apparatus
 }
 
-func NewCook(id int, cookDetails CookDetails, sendChan chan<- FoodOrder, menu Menu, apparatuses map[string]*Apparatus) *Cook {
+func NewCook(id int, cookDetails CookDetails, sendChan chan<- FoodOrder, foodOrderChan chan<- FoodOrder, menu Menu, apparatuses map[string]*Apparatus) *Cook {
 	return &Cook{
 		CookDetails:    cookDetails,
 		Id:             id,
 		Occupation:     0,
 		SendCookedFood: sendChan,
+		FoodOrderChan:  foodOrderChan,
 		Menu:           menu,
 		Apparatuses:    apparatuses,
 	}
@@ -46,8 +50,8 @@ func (c *Cook) CanCook(food Food) bool {
 	return isFree && isQualified
 }
 
-func (c *Cook) CookFood(foodOrder FoodOrder) {
-	food := c.Menu.Foods[foodOrder.FoodId-1]
+func (c *Cook) CookFood(fo FoodOrder) {
+	food := fo.Food
 
 	if food.Complexity > c.Rank {
 		log.Warn().Int("cook_id", c.Id).Msgf("%s is not qualified to cook %s", c.Name, food.Name)
@@ -66,30 +70,52 @@ func (c *Cook) CookFood(foodOrder FoodOrder) {
 		if apparatus != nil {
 			for {
 				if apparatus.Use() {
-					go c.cookFoodWithApparatus(foodOrder, apparatus)
+					go c.cookFoodWithApparatus(fo, apparatus)
 					atomic.AddInt64(&c.Occupation, -1)
 					return
 				}
-				time.Sleep(time.Duration(cfg.TimeUnit/2) * time.Millisecond)
+				time.Sleep(time.Duration(cfg.TimeUnit) * time.Millisecond)
 			}
 		}
 	}
 
-	preparationTime := time.Duration(food.PreparationTime * cfg.TimeUnit * int(time.Millisecond))
-	time.Sleep(preparationTime)
+	ctxSwitchTime := food.PreparationTime / cfg.CtxSwitchFactor
+	if fo.RemainingPreparationTime-ctxSwitchTime > 1 {
+		preparationTime := time.Duration(ctxSwitchTime * cfg.TimeUnit * int(time.Millisecond))
+		time.Sleep(preparationTime)
+		fo.RemainingPreparationTime -= ctxSwitchTime
+		c.FoodOrderChan <- fo
+		atomic.AddInt64(&c.Occupation, -1)
+		return
+	}
 
-	log.Debug().Int("cook_id", c.Id).Int("food_id", foodOrder.FoodId).Int("order_id", foodOrder.OrderId).Msgf("%s finished cooking %s", c.Name, food.Name)
-	c.SendCookedFood <- foodOrder
+	preparationTime := time.Duration(fo.RemainingPreparationTime * cfg.TimeUnit * int(time.Millisecond))
+	time.Sleep(preparationTime)
+	fo.RemainingPreparationTime = 0
+
+	log.Debug().Int("cook_id", c.Id).Int("food_id", fo.FoodId).Int("order_id", fo.OrderId).Msgf("%s finished cooking %s", c.Name, food.Name)
+	c.SendCookedFood <- fo
 	atomic.AddInt64(&c.Occupation, -1)
 }
 
-func (c *Cook) cookFoodWithApparatus(foodOrder FoodOrder, apparatus *Apparatus) {
-	food := c.Menu.Foods[foodOrder.FoodId-1]
+func (c *Cook) cookFoodWithApparatus(fo FoodOrder, apparatus *Apparatus) {
+	food := fo.Food
 
-	preparationTime := time.Duration(food.PreparationTime * cfg.TimeUnit * int(time.Millisecond))
+	ctxSwitchTime := food.PreparationTime / cfg.CtxSwitchFactor
+	if fo.RemainingPreparationTime-ctxSwitchTime > 0 {
+		preparationTime := time.Duration(ctxSwitchTime * cfg.TimeUnit * int(time.Millisecond))
+		time.Sleep(preparationTime)
+		fo.RemainingPreparationTime -= ctxSwitchTime
+		c.FoodOrderChan <- fo
+		apparatus.Release()
+		return
+	}
+
+	preparationTime := time.Duration(fo.RemainingPreparationTime * cfg.TimeUnit * int(time.Millisecond))
 	time.Sleep(preparationTime)
+	fo.RemainingPreparationTime = 0
 
-	log.Debug().Int("cook_id", c.Id).Int("food_id", foodOrder.FoodId).Int("order_id", foodOrder.OrderId).Msgf("%s finished cooking %s with %s", c.Name, food.Name, apparatus.Name)
-	c.SendCookedFood <- foodOrder
+	log.Debug().Int("cook_id", c.Id).Int("food_id", fo.FoodId).Int("order_id", fo.OrderId).Msgf("%s finished cooking %s with %s", c.Name, food.Name, apparatus.Name)
+	c.SendCookedFood <- fo
 	apparatus.Release()
 }
