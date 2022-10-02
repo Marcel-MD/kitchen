@@ -1,6 +1,8 @@
 {
   "time_unit": 250,
   "nr_of_tables": 10,
-
+  "max_order_items_count": 10,
+  "ctx_switch_factor": 3,
+  "nr_of_concurrent_orders": 2,
   "dining_hall_url": "http://dining-hall:8080"
 }

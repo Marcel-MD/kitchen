@@ -2,7 +2,7 @@ package domain
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"sync"
 
@@ -46,7 +46,7 @@ func GetApparatusesMap() map[string]*Apparatus {
 	}
 	defer file.Close()
 
-	byteValue, _ := ioutil.ReadAll(file)
+	byteValue, _ := io.ReadAll(file)
 	var a apparatuses
 	json.Unmarshal(byteValue, &a)
 
