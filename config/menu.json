@@ -69,6 +69,27 @@
       "preparation_time": 15,
       "complexity": 1,
       "cooking_apparatus": null
+    },
+    {
+      "id": 11,
+      "name": "Kebab",
+      "preparation-time": 15,
+      "complexity": 1,
+      "cooking-apparatus": null
+    },
+    {
+      "id": 12,
+      "name": "Unagi Maki",
+      "preparation-time": 20,
+      "complexity": 2,
+      "cooking-apparatus": null
+    },
+    {
+      "id": 13,
+      "name": "Tobacco Chicken",
+      "preparation-time": 30,
+      "complexity": 2,
+      "cooking-apparatus": "oven"
     }
   ]
 }
