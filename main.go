@@ -34,7 +34,7 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 	}).Methods("POST")
 
-	http.ListenAndServe(":8081", r)
+	http.ListenAndServe(":"+cfg.KitchenPort, r)
 }
 
 func config() domain.Config {

@@ -4,5 +4,6 @@
   "max_order_items_count": 10,
   "ctx_switch_factor": 5,
   "nr_of_concurrent_orders": 2,
-  "dining_hall_url": "http://dining-hall:8080"
+  "dining_hall_url": "http://dining-hall:8080",
+  "kitchen_port": "8081"
 }

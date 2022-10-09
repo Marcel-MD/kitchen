@@ -8,6 +8,7 @@ type Config struct {
 	NrOfConcurrentOrders int `json:"nr_of_concurrent_orders"`
 
 	DiningHallUrl string `json:"dining_hall_url"`
+	KitchenPort   string `json:"kitchen_port"`
 }
 
 var cfg Config = Config{
@@ -18,6 +19,7 @@ var cfg Config = Config{
 	NrOfConcurrentOrders: 2,
 
 	DiningHallUrl: "http://dining-hall:8080",
+	KitchenPort:   "8081",
 }
 
 func SetConfig(c Config) {
