@@ -12,7 +12,7 @@ $ docker compose up --build
 
 ## Run Application
 
-Set `"dining_hall_url": "http://localhost:8080"` in `config/cfg.json`.
+Set all urls in `config/cfg.json` to `http://localhost:{port}`.
 
 ```bash
 $ go run .
