@@ -1,0 +1,95 @@
+{
+  "foods": [
+    {
+      "id": 1,
+      "name": "pizza",
+      "preparation_time": 20,
+      "complexity": 2,
+      "cooking_apparatus": "oven"
+    },
+    {
+      "id": 2,
+      "name": "salad",
+      "preparation_time": 10,
+      "complexity": 1,
+      "cooking_apparatus": null
+    },
+    {
+      "id": 3,
+      "name": "zeama",
+      "preparation_time": 7,
+      "complexity": 1,
+      "cooking_apparatus": "stove"
+    },
+    {
+      "id": 4,
+      "name": "Scallop Sashimi with Meyer Lemon Confit",
+      "preparation_time": 32,
+      "complexity": 3,
+      "cooking_apparatus": null
+    },
+    {
+      "id": 5,
+      "name": "Island Duck with Mulberry Mustard",
+      "preparation_time": 35,
+      "complexity": 3,
+      "cooking_apparatus": "oven"
+    },
+    {
+      "id": 6,
+      "name": "Waffles",
+      "preparation_time": 10,
+      "complexity": 1,
+      "cooking_apparatus": "stove"
+    },
+    {
+      "id": 7,
+      "name": "Aubergine",
+      "preparation_time": 20,
+      "complexity": 2,
+      "cooking_apparatus": null
+    },
+    {
+      "id": 8,
+      "name": "Lasagna",
+      "preparation_time": 30,
+      "complexity": 2,
+      "cooking_apparatus": "oven"
+    },
+    {
+      "id": 9,
+      "name": "Burger",
+      "preparation_time": 15,
+      "complexity": 1,
+      "cooking_apparatus": "oven"
+    },
+    {
+      "id": 10,
+      "name": "Gyros",
+      "preparation_time": 15,
+      "complexity": 1,
+      "cooking_apparatus": null
+    },
+    {
+      "id": 11,
+      "name": "Kebab",
+      "preparation-time": 15,
+      "complexity": 1,
+      "cooking-apparatus": null
+    },
+    {
+      "id": 12,
+      "name": "Unagi Maki",
+      "preparation-time": 20,
+      "complexity": 2,
+      "cooking-apparatus": null
+    },
+    {
+      "id": 13,
+      "name": "Tobacco Chicken",
+      "preparation-time": 30,
+      "complexity": 2,
+      "cooking-apparatus": "oven"
+    }
+  ]
+}

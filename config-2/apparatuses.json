@@ -1,0 +1,12 @@
+{
+  "apparatuses": [
+    {
+      "name": "oven",
+      "quantity": 2
+    },
+    {
+      "name": "stove",
+      "quantity": 1
+    }
+  ]
+}

@@ -25,16 +25,21 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 # Start a new stage from scratch
 FROM alpine:latest
+
+# Build Variables
+ARG config config
+ARG port 8070
+
 RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
 
 # Copy the Pre-built binary file from the previous stage.
 COPY --from=builder /app/main .
-COPY --from=builder /app/config ./config
+COPY --from=builder /app/${config} ./config
 
-# Expose port 8081 to the outside world
-EXPOSE 8081
+# Expose port to the outside world
+EXPOSE ${port}
 
 #Command to run the executable
 CMD ["./main"]
