@@ -30,6 +30,16 @@ services:
     ports:
       - "8072:8072"
 
+  kitchen-3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        config: config-3
+        port: 8073
+    ports:
+      - "8073:8073"
+
 networks:
   default:
     name: restaurant

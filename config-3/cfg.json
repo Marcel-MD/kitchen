@@ -1,0 +1,9 @@
+{
+  "time_unit": 250,
+  "nr_of_tables": 6,
+  "max_order_items_count": 10,
+  "ctx_switch_factor": 5,
+  "nr_of_concurrent_orders": 2,
+  "dining_hall_url": "http://dining-hall-3:8083",
+  "kitchen_port": "8073"
+}
